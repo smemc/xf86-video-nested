@@ -37,8 +37,8 @@ void
 NestedInputLoadDriver(NestedClientPrivatePtr clientData);
 
 // Driver init functions.
-InputInfoPtr
-NestedInputPreInit(InputDriverPtr drv, IDevPtr dev, int flags);
+int
+NestedInputPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags);
 void
 NestedInputUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags);
 

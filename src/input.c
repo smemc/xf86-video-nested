@@ -98,42 +98,28 @@ _X_EXPORT XF86ModuleData nestedInputModuleData = {
     &NestedInputUnplug
 };
 
-InputInfoPtr 
-NestedInputPreInit(InputDriverPtr drv, IDevPtr dev, int flags) {
-    InputInfoPtr         pInfo;
+int
+NestedInputPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags) {
     NestedInputDevicePtr pNestedInput;
-
-    if (!(pInfo = xf86AllocateInput(drv, 0)))
-        return NULL;
 
     pNestedInput = calloc(1, sizeof(NestedInputDeviceRec));
 
-    if (!pNestedInput) {
-        pInfo->private = NULL;
-        xf86DeleteInput(pInfo, 0);
-        return NULL;
-    }
+    if (!pNestedInput)
+        return BadAlloc;
 
     pInfo->private = pNestedInput;
-    pInfo->name = xstrdup(dev->identifier);
-    pInfo->flags = 0;
     pInfo->type_name = XI_MOUSE; // This is really both XI_MOUSE and XI_KEYBOARD... but oh well.
-    pInfo->conf_idev = dev;
     pInfo->read_input = NestedInputReadInput; // new data available.
     pInfo->switch_mode = NULL; // Toggle absolute/relative mode.
     pInfo->device_control = NestedInputControl; // Enable/disable device.
 
     // Process driver specific options.
-    pNestedInput->device = xf86SetStrOption(dev->commonOptions,
+    pNestedInput->device = xf86SetStrOption(pInfo->options,
                                             "Device",
                                             "/dev/null");
 
     xf86Msg(X_INFO, "%s: Using device %s.\n", pInfo->name, pNestedInput->device);
 
-    // Process generic options.
-    xf86CollectInputOptions(pInfo, NULL, NULL);
-    xf86ProcessCommonOptions(pInfo, pInfo->options);
-    
     // Open sockets, init device files, etc.
     SYSCALL(pInfo->fd = open(pNestedInput->device, O_RDWR | O_NONBLOCK));
     
@@ -144,15 +130,11 @@ NestedInputPreInit(InputDriverPtr drv, IDevPtr dev, int flags) {
         pInfo->private = NULL;
 
         free(pNestedInput);
-        xf86DeleteInput(pInfo, 0);
 
-        return NULL;
+        return BadValue;
     }
     
-    pInfo->flags |= XI86_OPEN_ON_INIT;
-    pInfo->flags |= XI86_CONFIGURED;
-    
-    return pInfo;
+    return Success;
 }
 
 void
@@ -213,13 +195,9 @@ _nested_input_init_axes(DeviceIntPtr device) {
         return BadAlloc;
     }
 
-    pInfo->dev->valuator->mode = Relative;
-    if (!InitAbsoluteClassDeviceStruct(device))
-        return BadAlloc;
-
     int i;
     for (i = 0; i < NUM_MOUSE_AXES; i++) {
-        xf86InitValuatorAxisStruct(device, i, (Atom)0, -1, -1, 1, 1, 1);
+        xf86InitValuatorAxisStruct(device, i, (Atom)0, 0, 640, 1, 1, 1, Absolute);
         xf86InitValuatorDefaults(device, i);
     }
 
