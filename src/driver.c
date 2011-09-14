@@ -485,63 +485,6 @@ NestedValidateModes(ScrnInfoPtr pScrn) {
     pScrn->modes->prev->next = pScrn->modes;
 
     return ret;
-
-#if 0
-    /* Use xf86ValidateModes */
-    ClockRangePtr clockRanges;
-    int rc;
-
-    pScrn->videoRam = 1024*128; /* kByte */
-    pScrn->progClock = TRUE;
-    clockRanges = (ClockRangePtr)xnfcalloc(sizeof(ClockRange), 1);
-    clockRanges->next = NULL;
-    clockRanges->ClockMulFactor = 1;
-    clockRanges->minClock = 1;
-    clockRanges->maxClock = 3000000;
-    clockRanges->clockIndex = 1;
-    clockRanges->interlaceAllowed = TRUE;
-    clockRanges->doubleScanAllowed = TRUE;
-    rc = xf86ValidateModes(pScrn,                    /* scrp        */
-                          pScrn->monitor->Modes,    /* availModes  */
-                          pScrn->display->modes,    /* modeNames   */
-                          clockRanges,              /* cockRanges  */
-                          NULL,                     /* linePitches (opt) */
-                          256,                      /* minPitch    (opt) */
-                          2048,                     /* maxPitch    (opt) */
-                          (8*pScrn->bitsPerPixel),  /* pitchInc    */
-                          0,                        /* minHeight   (opt) */
-                          0,                        /* maxHeight   (opt) */
-                          pScrn->display->virtualX, /* virualX     (opt) */
-                          pScrn->display->virtualY, /* virtualY    (opt) */
-                          pScrn->videoRam * 1024,   /* apertureSize */
-                          LOOKUP_BEST_REFRESH       /* strategy */);
-
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "pScrn->modePool: 0x%x\n",
-               pScrn->modePool);
-
-    int rounds = 0;
-    for (mode = pScrn->modes;
-         (mode != pScrn->modes) && (rounds == 1);
-         mode = mode->next) {
-        rounds = 1;
-        NestedValidMode(pScrn->scrnIndex, mode, FALSE, 0);
-
-    }
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "pScrn->virtualX: %d\n",
-               pScrn->virtualX);
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "pScrn->virtualY: %d\n",
-               pScrn->virtualY);
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "pScrn->displayWidth: %d\n",
-               pScrn->displayWidth);
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "pScrn->virtualFrom: %d\n",
-               pScrn->virtualFrom);
-    if (rc < 1) {
-        return rc;
-    } else {
-        xf86PruneDriverModes(pScrn);
-        return rc;
-    }
-#endif
 }
 
 Bool
