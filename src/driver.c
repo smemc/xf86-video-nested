@@ -84,7 +84,8 @@ static void *NestedShadowWindow(ScreenPtr pScreen, CARD32 row, CARD32 offset,
                                 int mode, CARD32 *size, void *closure);
 static Bool NestedCloseScreen(int scrnIndex, ScreenPtr pScreen);
 
-static CARD32 NestedTimerCallback(OsTimerPtr timer, CARD32 time, pointer arg);
+static void NestedBlockHandler(pointer data, OSTimePtr wt, pointer LastSelectMask);
+static void NestedWakeupHandler(pointer data, int i, pointer LastSelectMask);
 
 int NestedValidateModes(ScrnInfoPtr pScrn);
 Bool NestedAddMode(ScrnInfoPtr pScrn, int width, int height);
@@ -166,7 +167,6 @@ typedef struct NestedPrivate {
     NestedClientPrivatePtr       clientData;
     CreateScreenResourcesProcPtr CreateScreenResources;
     CloseScreenProcPtr           CloseScreen;
-    OsTimerPtr                   timer;
     ShadowUpdateProc             update;
     /*ShadowWindowProc window;*/
 } NestedPrivate, *NestedPrivatePtr;
@@ -531,6 +531,16 @@ NestedMouseTimer(OsTimerPtr timer, CARD32 time, pointer arg) {
     return 0;
 }
 
+static void
+NestedBlockHandler(pointer data, OSTimePtr wt, pointer LastSelectMask) {
+    NestedClientPrivatePtr pNestedClient = data;
+    NestedClientCheckEvents(pNestedClient);
+}
+
+static void
+NestedWakeupHandler(pointer data, int i, pointer LastSelectMask) {
+}
+
 /* Called at each server generation */
 static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
                              char **argv) {
@@ -566,6 +576,8 @@ static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
         return FALSE;
     }
     
+    // Schedule the NestedInputLoadDriver function to load once the
+    // input core is initialized.
     TimerSet(NULL, 0, 1, NestedMouseTimer, pNested->clientData);
 
     miClearVisualTypes();
@@ -606,10 +618,7 @@ static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
     pNested->CloseScreen = pScreen->CloseScreen;
     pScreen->CloseScreen = NestedCloseScreen;
 
-    // Schedule the NestedInputLoadDriver function to load once the
-    // input core is initialized.
-    pNested->timer = TimerSet(NULL, 0, TIMER_CALLBACK_INTERVAL,
-                              NestedTimerCallback, (pointer)pScrn);
+    RegisterBlockAndWakeupHandlers(NestedBlockHandler, NestedWakeupHandler, pNested->clientData);
 
     return TRUE;
 }
@@ -645,17 +654,11 @@ NestedCloseScreen(int scrnIndex, ScreenPtr pScreen) {
 
     shadowRemove(pScreen, pScreen->GetScreenPixmap(pScreen));
 
-    TimerFree(PNESTED(pScrn)->timer);
+    RemoveBlockAndWakeupHandlers(NestedBlockHandler, NestedWakeupHandler, PNESTED(pScrn)->clientData);
     NestedClientCloseScreen(PCLIENTDATA(pScrn));
 
     pScreen->CloseScreen = PNESTED(pScrn)->CloseScreen;
     return (*pScreen->CloseScreen)(scrnIndex, pScreen);
-}
-
-static CARD32 NestedTimerCallback(OsTimerPtr timer, CARD32 time, pointer arg) {
-    ScrnInfoPtr pScrn = (ScrnInfoPtr) arg;
-    NestedClientTimerCallback(PCLIENTDATA(pScrn));
-    return TIMER_CALLBACK_INTERVAL;
 }
 
 static void *NestedShadowWindow(ScreenPtr pScreen, CARD32 row, CARD32 offset,

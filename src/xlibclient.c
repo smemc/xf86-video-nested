@@ -267,7 +267,7 @@ NestedClientUpdateScreen(NestedClientPrivatePtr pPriv, int16_t x1,
 }
 
 void
-NestedClientTimerCallback(NestedClientPrivatePtr pPriv) {
+NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
     XEvent ev;
 
     while(XCheckMaskEvent(pPriv->display, ~0, &ev)) {
@@ -327,4 +327,9 @@ NestedClientCloseScreen(NestedClientPrivatePtr pPriv) {
 void
 NestedClientSetDevicePtr(NestedClientPrivatePtr pPriv, DeviceIntPtr dev) {
     pPriv->dev = dev;
+}
+
+int
+NestedClientGetFileDescriptor(NestedClientPrivatePtr pPriv) {
+    return ConnectionNumber(pPriv->display);
 }

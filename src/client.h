@@ -62,8 +62,10 @@ void NestedClientUpdateScreen(NestedClientPrivatePtr pPriv,
 
 void NestedClientHideCursor(NestedClientPrivatePtr pPriv);
 
-void NestedClientTimerCallback(NestedClientPrivatePtr pPriv);
+void NestedClientCheckEvents(NestedClientPrivatePtr pPriv);
 
 void NestedClientCloseScreen(NestedClientPrivatePtr pPriv);
 
 void NestedClientSetDevicePtr(NestedClientPrivatePtr pPriv, DeviceIntPtr dev);
+
+int NestedClientGetFileDescriptor(NestedClientPrivatePtr pPriv);

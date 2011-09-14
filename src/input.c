@@ -74,7 +74,7 @@ static int
 _nested_input_init_axes(DeviceIntPtr device);
 
 typedef struct _NestedInputDeviceRec {
-    char *device;
+    NestedClientPrivatePtr clientData;
     int   version;
 } NestedInputDeviceRec, *NestedInputDevicePtr;
 
@@ -113,27 +113,6 @@ NestedInputPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags) {
     pInfo->switch_mode = NULL; // Toggle absolute/relative mode.
     pInfo->device_control = NestedInputControl; // Enable/disable device.
 
-    // Process driver specific options.
-    pNestedInput->device = xf86SetStrOption(pInfo->options,
-                                            "Device",
-                                            "/dev/null");
-
-    xf86Msg(X_INFO, "%s: Using device %s.\n", pInfo->name, pNestedInput->device);
-
-    // Open sockets, init device files, etc.
-    SYSCALL(pInfo->fd = open(pNestedInput->device, O_RDWR | O_NONBLOCK));
-    
-    if (pInfo->fd == -1) {
-        xf86Msg(X_ERROR, "%s: failed to open %s.",
-                pInfo->name, pNestedInput->device);
-
-        pInfo->private = NULL;
-
-        free(pNestedInput);
-
-        return BadValue;
-    }
-    
     return Success;
 }
 
@@ -202,6 +181,21 @@ _nested_input_init_axes(DeviceIntPtr device) {
     return Success; 
 }
 
+static CARD32
+nested_input_on(OsTimerPtr timer, CARD32 time, pointer arg) {
+    DeviceIntPtr device = arg;
+    InputInfoPtr pInfo = device->public.devicePrivate;
+    NestedInputDevicePtr pNestedInput = pInfo->private;
+
+    if(device->public.on)
+    {
+        pInfo->fd = NestedClientGetFileDescriptor(pNestedInput->clientData);
+        xf86FlushInput(pInfo->fd);
+        xf86AddEnabledDevice(pInfo);
+    }
+    return 0;
+}
+
 static int 
 NestedInputControl(DeviceIntPtr device, int what) {
     InputInfoPtr pInfo = device->public.devicePrivate;
@@ -217,11 +211,9 @@ NestedInputControl(DeviceIntPtr device, int what) {
             
             if (device->public.on)
                 break;
-            
-            xf86FlushInput(pInfo->fd);
-            xf86AddEnabledDevice(pInfo);
-            
+
             device->public.on = TRUE;
+            TimerSet(NULL, 0, 1, nested_input_on, device);
             break;
         case DEVICE_OFF:
             xf86Msg(X_INFO, "%s: Off.\n", pInfo->name);
@@ -241,8 +233,17 @@ NestedInputControl(DeviceIntPtr device, int what) {
     return Success;
 }
 
+static CARD32
+nested_input_ready(OsTimerPtr timer, CARD32 time, pointer arg) {
+    NestedClientPrivatePtr clientData = arg;
+    NestedClientCheckEvents(clientData);
+    return 0;
+}
+
 static void 
 NestedInputReadInput(InputInfoPtr pInfo) {
+    NestedInputDevicePtr pNestedInput = pInfo->private;
+    TimerSet(NULL, 0, 1, nested_input_ready, pNestedInput->clientData);
 }
 
 void
@@ -272,6 +273,10 @@ NestedInputLoadDriver(NestedClientPrivatePtr clientData) {
     // Send the device to the client so that the client can send the
     // device back to the input driver when events are being posted.
     NestedClientSetDevicePtr(clientData, dev);
+
+    InputInfoPtr pInfo = dev->public.devicePrivate;
+    NestedInputDevicePtr pNestedInput = pInfo->private;
+    pNestedInput->clientData = clientData;
 }
     
 void
