@@ -197,7 +197,7 @@ _nested_input_init_axes(DeviceIntPtr device) {
 
     int i;
     for (i = 0; i < NUM_MOUSE_AXES; i++) {
-        xf86InitValuatorAxisStruct(device, i, (Atom)0, 0, 640, 1, 1, 1, Absolute);
+        xf86InitValuatorAxisStruct(device, i, (Atom)0, -1, -1, 1, 1, 1, Absolute);
         xf86InitValuatorDefaults(device, i);
     }
 
