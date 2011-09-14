@@ -401,8 +401,6 @@ static Bool NestedPreInit(ScrnInfoPtr pScrn, int flags) {
         return FALSE;
     if (!xf86LoadSubModule(pScrn, "fb"))
         return FALSE;
-    if (!xf86LoadSubModule(pScrn, "ramdac"))
-        return FALSE;
 
     pScrn->memPhysBase = 0;
     pScrn->fbOffset = 0;
