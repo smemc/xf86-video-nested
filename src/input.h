@@ -29,7 +29,7 @@
  * Nathaniel Way <nathanielcw@hotmail.com>
  */
 
-#include <xorg/xf86.h>
+#include <xf86.h>
 #include "xf86Xinput.h"
 
 // Loads the nested input driver.

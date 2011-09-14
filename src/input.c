@@ -36,15 +36,15 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <xorg/xorg-server.h>
-#include <xorg/fb.h>
-#include <xorg/micmap.h>
-#include <xorg/mipointer.h>
-#include <xorg/shadow.h>
-#include <xorg/xf86.h>
-#include <xorg/xf86Module.h>
-#include <xorg/xf86str.h>
-#include <xorg/xf86_OSproc.h>
+#include <xorg-server.h>
+#include <fb.h>
+#include <micmap.h>
+#include <mipointer.h>
+#include <shadow.h>
+#include <xf86.h>
+#include <xf86Module.h>
+#include <xf86str.h>
+#include <xf86_OSproc.h>
 
 #include "config.h"
 

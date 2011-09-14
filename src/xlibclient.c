@@ -38,7 +38,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
 
-#include <xorg/xf86.h>
+#include <xf86.h>
 
 #include "client.h"
 

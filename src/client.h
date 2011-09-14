@@ -29,8 +29,8 @@
  * Nathaniel Way <nathanielcw@hotmail.com>
  */
 
-#include <xorg/colormap.h>
-#include <xorg/misc.h>
+#include <colormap.h>
+#include <misc.h>
 #include "xf86Cursor.h"
 
 struct NestedClientPrivate;
