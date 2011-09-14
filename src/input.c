@@ -185,8 +185,6 @@ _nested_input_init_buttons(DeviceIntPtr device) {
 
 static int
 _nested_input_init_axes(DeviceIntPtr device) {
-    InputInfoPtr pInfo = device->public.devicePrivate;
-
     if (!InitValuatorClassDeviceStruct(device,
                                        NUM_MOUSE_AXES,
                                        (Atom*)GetMotionHistory, // Not sure about this.
@@ -207,7 +205,6 @@ _nested_input_init_axes(DeviceIntPtr device) {
 static int 
 NestedInputControl(DeviceIntPtr device, int what) {
     InputInfoPtr pInfo = device->public.devicePrivate;
-    NestedInputDevicePtr pNestedInput = pInfo->private;
 
     switch (what) {
         case DEVICE_INIT:

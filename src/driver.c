@@ -548,7 +548,6 @@ Bool
 NestedAddMode(ScrnInfoPtr pScrn, int width, int height) {
     DisplayModePtr mode;
     char nameBuf[64];
-    int rc;
     size_t len;
 
     if (snprintf(nameBuf, 64, "%dx%d", width, height) >= 64)

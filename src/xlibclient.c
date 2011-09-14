@@ -269,8 +269,6 @@ NestedClientUpdateScreen(NestedClientPrivatePtr pPriv, int16_t x1,
 void
 NestedClientTimerCallback(NestedClientPrivatePtr pPriv) {
     XEvent ev;
-    char *msg = "Cursor";
-    char *msg2 = "Root";
 
     while(XCheckMaskEvent(pPriv->display, ~0, &ev)) {
         if (ev.type == Expose) {
