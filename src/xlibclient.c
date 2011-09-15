@@ -330,8 +330,6 @@ NestedClientCloseScreen(NestedClientPrivatePtr pPriv) {
     if (pPriv->usingShm) {
         XShmDetach(pPriv->display, &pPriv->shminfo);
         shmdt(pPriv->shminfo.shmaddr);
-    } else {
-        free(pPriv->img->data);
     }
 
     XDestroyImage(pPriv->img);
