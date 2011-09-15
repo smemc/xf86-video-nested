@@ -82,6 +82,67 @@ NestedClientValidDepth(int depth) {
     return TRUE;
 }
 
+static Bool
+NestedClientTryXShm(NestedClientPrivatePtr pPriv, int scrnIndex, int width, int height, int depth) {
+    int shmMajor, shmMinor;
+    Bool hasSharedPixmaps;
+
+    if (XShmQueryExtension(pPriv->display)) {
+        xf86DrvMsg(scrnIndex, X_INFO, "XShmQueryExtension failed.  Dropping XShm support.\n");
+
+        return FALSE;
+    }
+
+    if (XShmQueryVersion(pPriv->display, &shmMajor, &shmMinor,
+                         &hasSharedPixmaps)) {
+        xf86DrvMsg(scrnIndex, X_INFO,
+                   "XShm extension version %d.%d %s shared pixmaps\n",
+                   shmMajor, shmMinor, (hasSharedPixmaps) ? "with" : "without");
+    }
+
+    pPriv->img = XShmCreateImage(pPriv->display,
+                                 DefaultVisualOfScreen(pPriv->screen),
+                                 depth,
+                                 ZPixmap,
+                                 NULL, /* data */
+                                 &pPriv->shminfo,
+                                 width,
+                                 height);
+
+    if (!pPriv->img) {
+        xf86DrvMsg(scrnIndex, X_ERROR, "XShmCreateImage failed.  Dropping XShm support.\n");
+        return FALSE;
+    }
+
+    /* XXX: change the 0777 mask? */
+    pPriv->shminfo.shmid = shmget(IPC_PRIVATE,
+                                  pPriv->img->bytes_per_line *
+                                  pPriv->img->height,
+                                  IPC_CREAT | 0777);
+
+    if (pPriv->shminfo.shmid == -1) {
+        xf86DrvMsg(scrnIndex, X_ERROR, "shmget failed.  Dropping XShm support.\n");
+        XDestroyImage(pPriv->img);
+        return FALSE;
+    }
+
+    pPriv->shminfo.shmaddr = (char *)shmat(pPriv->shminfo.shmid, NULL, 0);
+
+    if (pPriv->shminfo.shmaddr == (char *) -1) {
+        xf86DrvMsg(scrnIndex, X_ERROR, "shmaddr failed.  Dropping XShm support.\n");
+        XDestroyImage(pPriv->img);
+        return FALSE;
+    }
+
+    pPriv->img->data = pPriv->shminfo.shmaddr;
+    pPriv->shminfo.readOnly = FALSE;
+    XShmAttach(pPriv->display, &pPriv->shminfo);
+    pPriv->usingShm = TRUE;
+
+    return TRUE;
+}
+
+
 NestedClientPrivatePtr
 NestedClientCreateScreen(int scrnIndex,
                          char *displayName,
@@ -97,8 +158,6 @@ NestedClientCreateScreen(int scrnIndex,
     NestedClientPrivatePtr pPriv;
     XSizeHints sizeHints;
 
-    int shmMajor, shmMinor;
-    Bool hasSharedPixmaps;
     char windowTitle[32];
 
     pPriv = malloc(sizeof(struct NestedClientPrivate));
@@ -134,52 +193,7 @@ NestedClientCreateScreen(int scrnIndex,
          ButtonPressMask | ButtonReleaseMask | KeyPressMask |
          KeyReleaseMask);
 
-    if (XShmQueryExtension(pPriv->display)) {
-        if (XShmQueryVersion(pPriv->display, &shmMajor, &shmMinor,
-                             &hasSharedPixmaps)) {
-            xf86DrvMsg(scrnIndex, X_INFO,
-                       "XShm extension version %d.%d %s shared pixmaps\n",
-                       shmMajor, shmMinor,
-                       (hasSharedPixmaps) ? "with" : "without");
-        }
-
-        pPriv->img = XShmCreateImage(pPriv->display,
-                                     DefaultVisualOfScreen(pPriv->screen),
-                                     depth,
-                                     ZPixmap,
-                                     NULL, /* data */
-                                     &pPriv->shminfo,
-                                     width,
-                                     height);
-
-        if (!pPriv->img)
-            return NULL;
-
-        /* XXX: change the 0777 mask? */
-        pPriv->shminfo.shmid = shmget(IPC_PRIVATE,
-                                      pPriv->img->bytes_per_line *
-                                      pPriv->img->height,
-                                      IPC_CREAT | 0777);
-
-        if (pPriv->shminfo.shmid == -1) {
-            XDestroyImage(pPriv->img);
-            return NULL;
-        }
-
-        pPriv->shminfo.shmaddr = (char *)shmat(pPriv->shminfo.shmid, NULL, 0);
-
-        if (pPriv->shminfo.shmaddr == (char *) -1) {
-            XDestroyImage(pPriv->img);
-            return NULL;
-        }
-
-        pPriv->img->data = pPriv->shminfo.shmaddr;
-        pPriv->shminfo.readOnly = FALSE;
-        XShmAttach(pPriv->display, &pPriv->shminfo);
-        pPriv->usingShm = TRUE;
-
-    } else {
-        xf86DrvMsg(scrnIndex, X_INFO, "XShm not supported\n");
+    if (!NestedClientTryXShm(pPriv, scrnIndex, width, height, depth)) {
         pPriv->img = XCreateImage(pPriv->display,
         DefaultVisualOfScreen(pPriv->screen),
                               depth,
