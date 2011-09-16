@@ -198,13 +198,23 @@ nested_input_on(OsTimerPtr timer, CARD32 time, pointer arg) {
 
 static int 
 NestedInputControl(DeviceIntPtr device, int what) {
+    int err;
     InputInfoPtr pInfo = device->public.devicePrivate;
 
     switch (what) {
         case DEVICE_INIT:
-            _nested_input_init_keyboard(device);
-            _nested_input_init_buttons(device);
-            _nested_input_init_axes(device);
+            err = _nested_input_init_keyboard(device);
+            if (err != Success)
+                return err;
+
+            err = _nested_input_init_buttons(device);
+            if (err != Success)
+                return err;
+
+            err = _nested_input_init_axes(device);
+            if (err != Success)
+                return err;
+
             break;
         case DEVICE_ON:
             xf86Msg(X_INFO, "%s: On.\n", pInfo->name);
