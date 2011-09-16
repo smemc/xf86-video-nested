@@ -285,7 +285,8 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
     XEvent ev;
 
     while(XCheckMaskEvent(pPriv->display, ~0, &ev)) {
-        if (ev.type == Expose) {
+        switch (ev.type) {
+        case Expose:
             NestedClientUpdateScreen(pPriv,
                                      ((XExposeEvent*)&ev)->x,
                                      ((XExposeEvent*)&ev)->y,
@@ -293,34 +294,23 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
                                      ((XExposeEvent*)&ev)->width,
                                      ((XExposeEvent*)&ev)->y + 
                                      ((XExposeEvent*)&ev)->height);
-        }
+            break;
 
-        // Post mouse motion events to input driver.
-        if (ev.type == MotionNotify) {
-            int x = ((XMotionEvent*)&ev)->x;
-            int y = ((XMotionEvent*)&ev)->y;
+        case MotionNotify:
+            NestedInputPostMouseMotionEvent(pPriv->dev,
+                                            ((XMotionEvent*)&ev)->x,
+                                            ((XMotionEvent*)&ev)->y);
+            break;
 
-            NestedInputPostMouseMotionEvent(pPriv->dev, x, y);
-        }
+        case ButtonPress:
+        case ButtonRelease:
+            NestedInputPostButtonEvent(pPriv->dev, ev.xbutton.button, ev.type == ButtonPress);
+            break;
 
-        // Post mouse button press events to input driver.
-        if (ev.type == ButtonPress) {
-            NestedInputPostButtonEvent(pPriv->dev, ev.xbutton.button, TRUE);
-        }
-        
-        // Post mouse button release events to input driver.
-        if (ev.type == ButtonRelease) {
-            NestedInputPostButtonEvent(pPriv->dev, ev.xbutton.button, FALSE);
-        }
-
-        // Post keyboard press events to input driver.
-        if (ev.type == KeyPress) {
-            NestedInputPostKeyboardEvent(pPriv->dev, ev.xkey.keycode, TRUE);
-        }
-
-        // Post keyboard release events to input driver.
-        if (ev.type == KeyRelease) {
-            NestedInputPostKeyboardEvent(pPriv->dev, ev.xkey.keycode, FALSE);
+        case KeyPress:
+        case KeyRelease:
+            NestedInputPostKeyboardEvent(pPriv->dev, ev.xkey.keycode, ev.type == KeyPress);
+            break;
         }
     }
 }
