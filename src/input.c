@@ -277,7 +277,7 @@ NestedInputLoadDriver(NestedClientPrivatePtr clientData) {
     int ret = NewInputDeviceRequest(options, NULL, &dev);
     
     if (ret != Success) {
-        xf86Msg(X_ERROR, "Failed to load input driver.\n");
+        FatalError("Failed to load input driver.\n");
     }
 
     // Send the device to the client so that the client can send the
