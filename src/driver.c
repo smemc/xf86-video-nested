@@ -80,8 +80,6 @@ static Bool NestedSaveScreen(ScreenPtr pScreen, int mode);
 static Bool NestedCreateScreenResources(ScreenPtr pScreen);
 
 static void NestedShadowUpdate(ScreenPtr pScreen, shadowBufPtr pBuf);
-static void *NestedShadowWindow(ScreenPtr pScreen, CARD32 row, CARD32 offset,
-                                int mode, CARD32 *size, void *closure);
 static Bool NestedCloseScreen(int scrnIndex, ScreenPtr pScreen);
 
 static void NestedBlockHandler(pointer data, OSTimePtr wt, pointer LastSelectMask);
@@ -168,7 +166,6 @@ typedef struct NestedPrivate {
     CreateScreenResourcesProcPtr CreateScreenResources;
     CloseScreenProcPtr           CloseScreen;
     ShadowUpdateProc             update;
-    /*ShadowWindowProc window;*/
 } NestedPrivate, *NestedPrivatePtr;
 
 #define PNESTED(p)    ((NestedPrivatePtr)((p)->driverPrivate))
@@ -606,7 +603,6 @@ static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
         return FALSE;
 
     pNested->update = NestedShadowUpdate;
-    /*pNested->window = NestedShadowWindow;*/
     pScreen->SaveScreen = NestedSaveScreen;
 
     if (!shadowSetup(pScreen))
@@ -664,11 +660,6 @@ NestedCloseScreen(int scrnIndex, ScreenPtr pScreen) {
 
     pScreen->CloseScreen = PNESTED(pScrn)->CloseScreen;
     return (*pScreen->CloseScreen)(scrnIndex, pScreen);
-}
-
-static void *NestedShadowWindow(ScreenPtr pScreen, CARD32 row, CARD32 offset,
-                                int mode, CARD32 *size, void *closure) {
-    xf86DrvMsg(pScreen->myNum, X_INFO, "NestedShadowWindow\n");
 }
 
 static Bool NestedSaveScreen(ScreenPtr pScreen, int mode) {
