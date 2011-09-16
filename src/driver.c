@@ -634,8 +634,13 @@ NestedCreateScreenResources(ScreenPtr pScreen) {
     ret = pScreen->CreateScreenResources(pScreen);
     pScreen->CreateScreenResources = NestedCreateScreenResources;
 
-    shadowAdd(pScreen, pScreen->GetScreenPixmap(pScreen), pNested->update,
-              /*pNested->window*/ 0, 0, 0);
+    if(!shadowAdd(pScreen, pScreen->GetScreenPixmap(pScreen),
+                  pNested->update, NULL, 0, 0)) {
+        xf86DrvMsg(pScreen->myNum, X_ERROR, "NestedCreateScreenResources failed to shadowAdd.\n");
+        return FALSE;
+    }
+
+    return ret;
 }
 
 static void
