@@ -664,10 +664,12 @@ NestedCloseScreen(int scrnIndex, ScreenPtr pScreen) {
 
 static Bool NestedSaveScreen(ScreenPtr pScreen, int mode) {
     xf86DrvMsg(pScreen->myNum, X_INFO, "NestedSaveScreen\n");
+    return TRUE;
 }
 
 static Bool NestedSwitchMode(int scrnIndex, DisplayModePtr mode, int flags) {
     xf86DrvMsg(scrnIndex, X_INFO, "NestedSwitchMode\n");
+    return TRUE;
 }
 
 static void NestedAdjustFrame(int scrnIndex, int x, int y, int flags) {
@@ -676,6 +678,7 @@ static void NestedAdjustFrame(int scrnIndex, int x, int y, int flags) {
 
 static Bool NestedEnterVT(int scrnIndex, int flags) {
     xf86DrvMsg(scrnIndex, X_INFO, "NestedEnterVT\n");
+    return TRUE;
 }
 
 static void NestedLeaveVT(int scrnIndex, int flags) {
