@@ -297,6 +297,11 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
             break;
 
         case MotionNotify:
+            if (!pPriv->dev) {
+                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initializedXShmQueryExtension failed.  Dropping XShm support.\n");
+                break;
+            }
+
             NestedInputPostMouseMotionEvent(pPriv->dev,
                                             ((XMotionEvent*)&ev)->x,
                                             ((XMotionEvent*)&ev)->y);
@@ -304,11 +309,21 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
 
         case ButtonPress:
         case ButtonRelease:
+            if (!pPriv->dev) {
+                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initializedXShmQueryExtension failed.  Dropping XShm support.\n");
+                break;
+            }
+
             NestedInputPostButtonEvent(pPriv->dev, ev.xbutton.button, ev.type == ButtonPress);
             break;
 
         case KeyPress:
         case KeyRelease:
+            if (!pPriv->dev) {
+                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initializedXShmQueryExtension failed.  Dropping XShm support.\n");
+                break;
+            }
+
             NestedInputPostKeyboardEvent(pPriv->dev, ev.xkey.keycode, ev.type == KeyPress);
             break;
         }
