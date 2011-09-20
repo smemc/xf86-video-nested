@@ -298,7 +298,7 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
 
         case MotionNotify:
             if (!pPriv->dev) {
-                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initializedXShmQueryExtension failed.  Dropping XShm support.\n");
+                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initialized, ignoring input.\n");
                 break;
             }
 
@@ -310,7 +310,7 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
         case ButtonPress:
         case ButtonRelease:
             if (!pPriv->dev) {
-                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initializedXShmQueryExtension failed.  Dropping XShm support.\n");
+                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initialized, ignoring input.\n");
                 break;
             }
 
@@ -320,7 +320,7 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
         case KeyPress:
         case KeyRelease:
             if (!pPriv->dev) {
-                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initializedXShmQueryExtension failed.  Dropping XShm support.\n");
+                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initialized, ignoring input.\n");
                 break;
             }
 
