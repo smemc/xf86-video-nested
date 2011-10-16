@@ -45,6 +45,7 @@
 #include <xf86Module.h>
 #include <xf86str.h>
 #include <xf86_OSproc.h>
+#include <xkbsrv.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -131,10 +132,53 @@ static void
 NestedInputUnplug(pointer p) {
 }
 
+static void
+NestedInputUpdateKeymap(DeviceIntPtr device) {
+    InputInfoPtr pInfo = device->public.devicePrivate;
+    NestedInputDevicePtr pNestedInput = pInfo->private;
+    KeySymsRec keySyms;
+    XkbControlsRec ctrls;
+    CARD8 modmap[MAP_LENGTH];
+
+    if(!NestedClientGetKeyboardMappings(pNestedInput->clientData, &keySyms, modmap, &ctrls)) {
+        xf86Msg(X_ERROR, "%s: Failed to get keyboard mappings.\n", pInfo->name);
+        return;
+    }
+
+#ifdef _XSERVER64
+    {
+        unsigned long *keymap64 = keySyms.map;
+        size_t len = (keySyms.maxKeyCode - keySyms.minKeyCode + 1) * keySyms.mapWidth;
+        size_t i;
+
+        keySyms.map = malloc(len * sizeof(KeySym));
+        if (!keySyms.map) {
+            xf86Msg(X_ERROR, "%s: Failed to get keyboard mappings.\n", pInfo->name);
+            free(keymap64);
+            return;
+        }
+
+        for(i = 0; i < len; ++i)
+            keySyms.map[i] = keymap64[i];
+        free(keymap64);
+    }
+#endif
+
+    XkbApplyMappingChange(device, &keySyms, keySyms.minKeyCode,
+                          keySyms.maxKeyCode - keySyms.minKeyCode + 1,
+                          modmap, serverClient);
+    XkbDDXChangeControls(device, &ctrls, &ctrls);
+
+    free(keySyms.map);
+
+    if (inputInfo.keyboard != device)
+        XkbCopyDeviceKeymap(inputInfo.keyboard, device);
+}
+
 static int
 _nested_input_init_keyboard(DeviceIntPtr device) {
     InputInfoPtr pInfo = device->public.devicePrivate;
-    
+
     if (!InitKeyboardDeviceStruct(device, NULL, NULL, NULL)) {
         xf86Msg(X_ERROR, "%s: Failed to register keyboard.\n", pInfo->name);
         return BadAlloc;
@@ -260,7 +304,10 @@ NestedInputReadInput(InputInfoPtr pInfo) {
 
 void
 NestedInputLoadDriver(NestedClientPrivatePtr clientData) {
-    
+    DeviceIntPtr dev;
+    InputInfoPtr pInfo;
+    NestedInputDevicePtr pNestedInput;
+
     // Create input options for our invocation to NewInputDeviceRequest.   
     InputOption* options = (InputOption*)malloc(sizeof(InputOption));
     
@@ -275,20 +322,22 @@ NestedInputLoadDriver(NestedClientPrivatePtr clientData) {
 
     // Invoke NewInputDeviceRequest to call the PreInit function of
     // the driver.
-    DeviceIntPtr dev;
     int ret = NewInputDeviceRequest(options, NULL, &dev);
     
     if (ret != Success) {
         FatalError("Failed to load input driver.\n");
     }
 
+    pInfo = dev->public.devicePrivate;
+    pNestedInput = pInfo->private;
+    pNestedInput->clientData = clientData;
+
+    // Set our keymap to be the same as the server's
+    NestedInputUpdateKeymap(dev);
+
     // Send the device to the client so that the client can send the
     // device back to the input driver when events are being posted.
     NestedClientSetDevicePtr(clientData, dev);
-
-    InputInfoPtr pInfo = dev->public.devicePrivate;
-    NestedInputDevicePtr pNestedInput = pInfo->private;
-    pNestedInput->clientData = clientData;
 }
     
 void

@@ -33,6 +33,8 @@
 #include <misc.h>
 #include "xf86Cursor.h"
 
+#include <X11/extensions/XKBstr.h>
+
 struct NestedClientPrivate;
 typedef struct NestedClientPrivate *NestedClientPrivatePtr;
 
@@ -69,3 +71,5 @@ void NestedClientCloseScreen(NestedClientPrivatePtr pPriv);
 void NestedClientSetDevicePtr(NestedClientPrivatePtr pPriv, DeviceIntPtr dev);
 
 int NestedClientGetFileDescriptor(NestedClientPrivatePtr pPriv);
+
+Bool NestedClientGetKeyboardMappings(NestedClientPrivatePtr pPriv, KeySymsPtr keySyms, CARD8 *modmap, XkbControlsPtr ctrls);

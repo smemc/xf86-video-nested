@@ -36,6 +36,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/XKBlib.h>
 #include <X11/extensions/XShm.h>
 
 #include <xf86.h>
@@ -64,6 +65,14 @@ struct NestedClientPrivate {
     XColor color1;
     DeviceIntPtr dev; // The pointer to the input device.  Passed back to the
                       // input driver when posting input events.
+
+    struct {
+        int op;
+        int event;
+        int error;
+        int major;
+        int minor;
+    } xkb;
 };
 
 /* Checks if a display is open */
@@ -161,7 +170,7 @@ NestedClientCreateScreen(int scrnIndex,
                          Pixel *retBlueMask) {
     NestedClientPrivatePtr pPriv;
     XSizeHints sizeHints;
-
+    Bool supported;
     char windowTitle[32];
 
     pPriv = malloc(sizeof(struct NestedClientPrivate));
@@ -170,6 +179,14 @@ NestedClientCreateScreen(int scrnIndex,
     pPriv->display = XOpenDisplay(displayName);
     if (!pPriv->display)
         return NULL;
+
+    supported = XkbQueryExtension(pPriv->display, &pPriv->xkb.op, &pPriv->xkb.event,
+                                  &pPriv->xkb.error, &pPriv->xkb.major, &pPriv->xkb.minor);
+    if (!supported) {
+        xf86DrvMsg(pPriv->scrnIndex, X_ERROR, "The remote server does not support the XKEYBOARD extension.\n");
+        XCloseDisplay(pPriv->display);
+        return NULL;
+    }
 
     pPriv->screenNumber = DefaultScreen(pPriv->display);
     pPriv->screen = ScreenOfDisplay(pPriv->display, pPriv->screenNumber);
@@ -353,4 +370,51 @@ NestedClientSetDevicePtr(NestedClientPrivatePtr pPriv, DeviceIntPtr dev) {
 int
 NestedClientGetFileDescriptor(NestedClientPrivatePtr pPriv) {
     return ConnectionNumber(pPriv->display);
+}
+
+Bool NestedClientGetKeyboardMappings(NestedClientPrivatePtr pPriv, KeySymsPtr keySyms, CARD8 *modmap, XkbControlsPtr ctrls) {
+    XModifierKeymap *modifier_keymap;
+    KeySym *keymap;
+    int mapWidth;
+    int min_keycode, max_keycode;
+    int i, j;
+    XkbDescPtr xkb;
+
+    XDisplayKeycodes(pPriv->display, &min_keycode, &max_keycode);
+    keymap = XGetKeyboardMapping(pPriv->display,
+                                 min_keycode,
+                                 max_keycode - min_keycode + 1,
+                                 &mapWidth);
+
+    memset(modmap, 0, sizeof(CARD8) * MAP_LENGTH);
+    modifier_keymap = XGetModifierMapping(pPriv->display);
+    for (j = 0; j < 8; j++)
+        for(i = 0; i < modifier_keymap->max_keypermod; i++) {
+            CARD8 keycode;
+            if ((keycode = modifier_keymap->modifiermap[j * modifier_keymap->max_keypermod + i]))
+                modmap[keycode] |= 1<<j;
+    }
+    XFreeModifiermap(modifier_keymap);
+
+    keySyms->minKeyCode = min_keycode;
+    keySyms->maxKeyCode = max_keycode;
+    keySyms->mapWidth = mapWidth;
+    keySyms->map = keymap;
+
+    xkb = XkbGetKeyboard(pPriv->display, XkbGBN_AllComponentsMask, XkbUseCoreKbd);
+    if (xkb == NULL || xkb->geom == NULL) {
+        xf86DrvMsg(pPriv->scrnIndex, X_ERROR, "Couldn't get XKB keyboard.\n");
+        free(keymap);
+        return FALSE;
+    }
+
+    if(XkbGetControls(pPriv->display, XkbAllControlsMask, xkb) != Success) {
+        xf86DrvMsg(pPriv->scrnIndex, X_ERROR, "Couldn't get XKB keyboard controls.\n");
+        free(keymap);
+        return FALSE;
+    }
+
+    memcpy(ctrls, xkb->ctrls, sizeof(XkbControlsRec));
+    XkbFreeKeyboard(xkb, 0, False);
+    return TRUE;
 }
