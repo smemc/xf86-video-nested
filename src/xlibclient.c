@@ -47,7 +47,7 @@
 
 #include "client.h"
 
-#include "input.h"
+#include "nested_input.h"
 
 struct NestedClientPrivate {
     Display *display;

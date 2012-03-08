@@ -47,7 +47,7 @@
 #endif
 
 #include "client.h"
-#include "input.h"
+#include "nested_input.h"
 
 #define NESTED_VERSION 0
 #define NESTED_NAME "NESTED"

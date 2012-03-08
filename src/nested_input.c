@@ -52,7 +52,7 @@
 #endif
 
 #include "client.h"
-#include "input.h"
+#include "nested_input.h"
 
 #define SYSCALL(call) while (((call) == -1) && (errno == EINTR))
 
