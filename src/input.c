@@ -147,7 +147,7 @@ NestedInputUpdateKeymap(DeviceIntPtr device) {
 
 #ifdef _XSERVER64
     {
-        unsigned long *keymap64 = keySyms.map;
+        unsigned long *keymap64 = (unsigned long *)keySyms.map;
         size_t len = (keySyms.maxKeyCode - keySyms.minKeyCode + 1) * keySyms.mapWidth;
         size_t i;
 
