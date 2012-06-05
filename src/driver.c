@@ -32,6 +32,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <xorg-server.h>
 #include <fb.h>
 #include <micmap.h>
@@ -42,9 +46,7 @@
 #include <xf86str.h>
 #include "xf86Xinput.h"
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include "compat-api.h"
 
 #include "client.h"
 #include "nested_input.h"
@@ -67,22 +69,21 @@ static Bool NestedDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
                              pointer ptr);
 
 static Bool NestedPreInit(ScrnInfoPtr pScrn, int flags);
-static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
-                             char **argv);
+static Bool NestedScreenInit(SCREEN_INIT_ARGS_DECL);
 
-static Bool NestedSwitchMode(int scrnIndex, DisplayModePtr mode, int flags);
-static void NestedAdjustFrame(int scrnIndex, int x, int y, int flags);
-static Bool NestedEnterVT(int scrnIndex, int flags);
-static void NestedLeaveVT(int scrnIndex, int flags);
-static void NestedFreeScreen(int scrnIndex, int flags);
-static ModeStatus NestedValidMode(int scrnIndex, DisplayModePtr mode,
+static Bool NestedSwitchMode(SWITCH_MODE_ARGS_DECL);
+static void NestedAdjustFrame(ADJUST_FRAME_ARGS_DECL);
+static Bool NestedEnterVT(VT_FUNC_ARGS_DECL);
+static void NestedLeaveVT(VT_FUNC_ARGS_DECL);
+static void NestedFreeScreen(FREE_SCREEN_ARGS_DECL);
+static ModeStatus NestedValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
                                   Bool verbose, int flags);
 
 static Bool NestedSaveScreen(ScreenPtr pScreen, int mode);
 static Bool NestedCreateScreenResources(ScreenPtr pScreen);
 
 static void NestedShadowUpdate(ScreenPtr pScreen, shadowBufPtr pBuf);
-static Bool NestedCloseScreen(int scrnIndex, ScreenPtr pScreen);
+static Bool NestedCloseScreen(CLOSE_SCREEN_ARGS_DECL);
 
 static void NestedBlockHandler(pointer data, OSTimePtr wt, pointer LastSelectMask);
 static void NestedWakeupHandler(pointer data, int i, pointer LastSelectMask);
@@ -541,15 +542,14 @@ NestedWakeupHandler(pointer data, int i, pointer LastSelectMask) {
 }
 
 /* Called at each server generation */
-static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
-                             char **argv) {
-    ScrnInfoPtr pScrn;
+static Bool NestedScreenInit(SCREEN_INIT_ARGS_DECL)
+{
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     NestedPrivatePtr pNested;
     Pixel redMask, greenMask, blueMask;
 
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedScreenInit\n");
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedScreenInit\n");
 
-    pScrn = xf86Screens[pScreen->myNum];
     pNested = PNESTED(pScrn);
     /*NESTEDScrn = pScrn;*/
 
@@ -560,7 +560,7 @@ static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
     
     //Load_Nested_Mouse();
 
-    pNested->clientData = NestedClientCreateScreen(scrnIndex,
+    pNested->clientData = NestedClientCreateScreen(pScrn->scrnIndex,
                                                    pNested->displayName,
                                                    pScrn->virtualX,
                                                    pScrn->virtualY,
@@ -571,7 +571,7 @@ static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
                                                    &redMask, &greenMask, &blueMask);
     
     if (!pNested->clientData) {
-        xf86DrvMsg(scrnIndex, X_ERROR, "Failed to create client screen\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to create client screen\n");
         return FALSE;
     }
     
@@ -624,7 +624,7 @@ static Bool NestedScreenInit(int scrnIndex, ScreenPtr pScreen, int argc,
 static Bool
 NestedCreateScreenResources(ScreenPtr pScreen) {
     xf86DrvMsg(pScreen->myNum, X_INFO, "NestedCreateScreenResources\n");
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     NestedPrivatePtr pNested = PNESTED(pScrn);
     Bool ret;
 
@@ -644,16 +644,16 @@ NestedCreateScreenResources(ScreenPtr pScreen) {
 static void
 NestedShadowUpdate(ScreenPtr pScreen, shadowBufPtr pBuf) {
     RegionPtr pRegion = DamageRegion(pBuf->pDamage);
-    NestedClientUpdateScreen(PCLIENTDATA(xf86Screens[pScreen->myNum]),
+    NestedClientUpdateScreen(PCLIENTDATA(xf86ScreenToScrn(pScreen)),
                              pRegion->extents.x1, pRegion->extents.y1,
                              pRegion->extents.x2, pRegion->extents.y2);
 }
 
 static Bool
-NestedCloseScreen(int scrnIndex, ScreenPtr pScreen) {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+NestedCloseScreen(CLOSE_SCREEN_ARGS_DECL) {
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedCloseScreen\n");
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedCloseScreen\n");
 
     shadowRemove(pScreen, pScreen->GetScreenPixmap(pScreen));
 
@@ -661,7 +661,7 @@ NestedCloseScreen(int scrnIndex, ScreenPtr pScreen) {
     NestedClientCloseScreen(PCLIENTDATA(pScrn));
 
     pScreen->CloseScreen = PNESTED(pScrn)->CloseScreen;
-    return (*pScreen->CloseScreen)(scrnIndex, pScreen);
+    return (*pScreen->CloseScreen)(CLOSE_SCREEN_ARGS);
 }
 
 static Bool NestedSaveScreen(ScreenPtr pScreen, int mode) {
@@ -669,38 +669,44 @@ static Bool NestedSaveScreen(ScreenPtr pScreen, int mode) {
     return TRUE;
 }
 
-static Bool NestedSwitchMode(int scrnIndex, DisplayModePtr mode, int flags) {
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedSwitchMode\n");
+static Bool NestedSwitchMode(SWITCH_MODE_ARGS_DECL) {
+    SCRN_INFO_PTR(arg);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedSwitchMode\n");
     return TRUE;
 }
 
-static void NestedAdjustFrame(int scrnIndex, int x, int y, int flags) {
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedAdjustFrame\n");
+static void NestedAdjustFrame(ADJUST_FRAME_ARGS_DECL) {
+    SCRN_INFO_PTR(arg);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedAdjustFrame\n");
 }
 
-static Bool NestedEnterVT(int scrnIndex, int flags) {
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedEnterVT\n");
+static Bool NestedEnterVT(VT_FUNC_ARGS_DECL) {
+    SCRN_INFO_PTR(arg);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedEnterVT\n");
     return TRUE;
 }
 
-static void NestedLeaveVT(int scrnIndex, int flags) {
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedLeaveVT\n");
+static void NestedLeaveVT(VT_FUNC_ARGS_DECL) {
+    SCRN_INFO_PTR(arg);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedLeaveVT\n");
 }
 
-static void NestedFreeScreen(int scrnIndex, int flags) {
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedFreeScreen\n");
+static void NestedFreeScreen(FREE_SCREEN_ARGS_DECL) {
+    SCRN_INFO_PTR(arg);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedFreeScreen\n");
 }
 
-static ModeStatus NestedValidMode(int scrnIndex, DisplayModePtr mode,
+static ModeStatus NestedValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
                                   Bool verbose, int flags) {
-    xf86DrvMsg(scrnIndex, X_INFO, "NestedValidMode:\n");
+    SCRN_INFO_PTR(arg);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "NestedValidMode:\n");
 
     if (!mode)
-        xf86DrvMsg(scrnIndex, X_ERROR, "NULL MODE!\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "NULL MODE!\n");
 
-    xf86DrvMsg(scrnIndex, X_INFO, "  name: %s\n", mode->name);
-    xf86DrvMsg(scrnIndex, X_INFO, "  HDisplay: %d\n", mode->HDisplay);
-    xf86DrvMsg(scrnIndex, X_INFO, "  VDisplay: %d\n", mode->VDisplay);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "  name: %s\n", mode->name);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "  HDisplay: %d\n", mode->HDisplay);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "  VDisplay: %d\n", mode->VDisplay);
     return MODE_OK;
 }
 
