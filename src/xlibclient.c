@@ -100,7 +100,7 @@ NestedClientTryXShm(NestedClientPrivatePtr pPriv, int scrnIndex, int width, int 
     int shmMajor, shmMinor;
     Bool hasSharedPixmaps;
 
-    if (XShmQueryExtension(pPriv->display)) {
+    if (!XShmQueryExtension(pPriv->display)) {
         xf86DrvMsg(scrnIndex, X_INFO, "XShmQueryExtension failed.  Dropping XShm support.\n");
 
         return FALSE;
