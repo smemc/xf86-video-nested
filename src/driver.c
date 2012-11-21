@@ -597,7 +597,6 @@ static Bool NestedScreenInit(SCREEN_INIT_ARGS_DECL)
     fbPictureInit(pScreen, 0, 0);
 
     xf86SetBlackWhitePixels(pScreen);
-    miInitializeBackingStore(pScreen);
     xf86SetBackingStore(pScreen);
     miDCInitialize(pScreen, xf86GetPointerScreenFuncs());
     
