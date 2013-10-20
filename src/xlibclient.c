@@ -203,7 +203,7 @@ NestedClientCreateScreen(int scrnIndex,
     sizeHints.max_height = height;
     XSetWMNormalHints(pPriv->display, pPriv->window, &sizeHints);
 
-    sprintf(windowTitle, "Screen %d", scrnIndex);
+    snprintf(windowTitle, sizeof(windowTitle), "Screen %d", scrnIndex);
 
     XStoreName(pPriv->display, pPriv->window, windowTitle);
     
