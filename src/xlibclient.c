@@ -39,6 +39,7 @@
 #include <X11/XKBlib.h>
 #include <X11/extensions/XShm.h>
 
+#include <xorg-server.h>
 #include <xf86.h>
 
 #ifdef HAVE_CONFIG_H
