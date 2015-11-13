@@ -27,6 +27,7 @@
  * Colin Hill <colin.james.hill@gmail.com>
  * Weseung Hwang <weseung@gmail.com>
  * Nathaniel Way <nathanielcw@hotmail.com>
+ * Laércio de Sousa <laerciosousa@sme-mogidascruzes.sp.gov.br>
  */
 
 #include <stdlib.h>
@@ -78,10 +79,10 @@ struct NestedClientPrivate {
 
 /* Checks if a display is open */
 Bool
-NestedClientCheckDisplay(const char *displayName) {
+NestedClientCheckDisplay() {
     Display *d;
 
-    d = XOpenDisplay(displayName);
+    d = XOpenDisplay(NULL);
     if (!d) {
         return FALSE;
     } else {
@@ -159,7 +160,6 @@ NestedClientTryXShm(NestedClientPrivatePtr pPriv, int scrnIndex, int width, int 
 
 NestedClientPrivatePtr
 NestedClientCreateScreen(int scrnIndex,
-                         const char *displayName,
                          int width,
                          int height,
                          int originX,
@@ -177,7 +177,7 @@ NestedClientCreateScreen(int scrnIndex,
     pPriv = malloc(sizeof(struct NestedClientPrivate));
     pPriv->scrnIndex = scrnIndex;
 
-    pPriv->display = XOpenDisplay(displayName);
+    pPriv->display = XOpenDisplay(NULL);
     if (!pPriv->display)
         return NULL;
 

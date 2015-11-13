@@ -27,6 +27,7 @@
  * Colin Hill <colin.james.hill@gmail.com>
  * Weseung Hwang <weseung@gmail.com>
  * Nathaniel Way <nathanielcw@hotmail.com>
+ * Laércio de Sousa <laerciosousa@sme-mogidascruzes.sp.gov.br>
  */
 
 #include <colormap.h>
@@ -38,12 +39,11 @@
 struct NestedClientPrivate;
 typedef struct NestedClientPrivate *NestedClientPrivatePtr;
 
-Bool NestedClientCheckDisplay(const char *displayName);
+Bool NestedClientCheckDisplay();
 
 Bool NestedClientValidDepth(int depth);
 
 NestedClientPrivatePtr NestedClientCreateScreen(int    scrnIndex,
-                                                const char  *displayName,
                                                 int    width,
                                                 int    height,
                                                 int    originX,
