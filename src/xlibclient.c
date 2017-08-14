@@ -49,8 +49,6 @@
 
 #include "client.h"
 
-#include "nested_input.h"
-
 struct NestedClientPrivate {
     Display *display;
     int screenNumber;
@@ -65,8 +63,6 @@ struct NestedClientPrivate {
     Cursor mycursor; /* Test cursor */
     Pixmap bitmapNoData;
     XColor color1;
-    DeviceIntPtr dev; // The pointer to the input device.  Passed back to the
-                      // input driver when posting input events.
 
     struct {
         int op;
@@ -210,10 +206,7 @@ NestedClientCreateScreen(int scrnIndex,
     
     XMapWindow(pPriv->display, pPriv->window);
 
-    XSelectInput(pPriv->display, pPriv->window, ExposureMask | 
-         PointerMotionMask | EnterWindowMask | LeaveWindowMask |
-         ButtonPressMask | ButtonReleaseMask | KeyPressMask |
-         KeyReleaseMask);
+    XSelectInput(pPriv->display, pPriv->window, ExposureMask);
 
     if (!NestedClientTryXShm(pPriv, scrnIndex, width, height, depth)) {
         pPriv->img = XCreateImage(pPriv->display,
@@ -261,8 +254,6 @@ xf86DrvMsg(scrnIndex, X_INFO, "blu_mask: 0x%lx\n", pPriv->img->blue_mask);
             break;
         }
     }
-   
-    pPriv->dev = (DeviceIntPtr)NULL;
  
     return pPriv;
 }
@@ -317,37 +308,6 @@ NestedClientCheckEvents(NestedClientPrivatePtr pPriv) {
                                      ((XExposeEvent*)&ev)->y + 
                                      ((XExposeEvent*)&ev)->height);
             break;
-
-        case MotionNotify:
-            if (!pPriv->dev) {
-                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initialized, ignoring input.\n");
-                break;
-            }
-
-            NestedInputPostMouseMotionEvent(pPriv->dev,
-                                            ((XMotionEvent*)&ev)->x,
-                                            ((XMotionEvent*)&ev)->y);
-            break;
-
-        case ButtonPress:
-        case ButtonRelease:
-            if (!pPriv->dev) {
-                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initialized, ignoring input.\n");
-                break;
-            }
-
-            NestedInputPostButtonEvent(pPriv->dev, ev.xbutton.button, ev.type == ButtonPress);
-            break;
-
-        case KeyPress:
-        case KeyRelease:
-            if (!pPriv->dev) {
-                xf86DrvMsg(pPriv->scrnIndex, X_INFO, "Input device is not yet initialized, ignoring input.\n");
-                break;
-            }
-
-            NestedInputPostKeyboardEvent(pPriv->dev, ev.xkey.keycode, ev.type == KeyPress);
-            break;
         }
     }
 }
@@ -363,59 +323,7 @@ NestedClientCloseScreen(NestedClientPrivatePtr pPriv) {
     XCloseDisplay(pPriv->display);
 }
 
-void
-NestedClientSetDevicePtr(NestedClientPrivatePtr pPriv, DeviceIntPtr dev) {
-    pPriv->dev = dev;
-}
-
 int
 NestedClientGetFileDescriptor(NestedClientPrivatePtr pPriv) {
     return ConnectionNumber(pPriv->display);
-}
-
-Bool NestedClientGetKeyboardMappings(NestedClientPrivatePtr pPriv, KeySymsPtr keySyms, CARD8 *modmap, XkbControlsPtr ctrls) {
-    XModifierKeymap *modifier_keymap;
-    KeySym *keymap;
-    int mapWidth;
-    int min_keycode, max_keycode;
-    int i, j;
-    XkbDescPtr xkb;
-
-    XDisplayKeycodes(pPriv->display, &min_keycode, &max_keycode);
-    keymap = XGetKeyboardMapping(pPriv->display,
-                                 min_keycode,
-                                 max_keycode - min_keycode + 1,
-                                 &mapWidth);
-
-    memset(modmap, 0, sizeof(CARD8) * MAP_LENGTH);
-    modifier_keymap = XGetModifierMapping(pPriv->display);
-    for (j = 0; j < 8; j++)
-        for(i = 0; i < modifier_keymap->max_keypermod; i++) {
-            CARD8 keycode;
-            if ((keycode = modifier_keymap->modifiermap[j * modifier_keymap->max_keypermod + i]))
-                modmap[keycode] |= 1<<j;
-    }
-    XFreeModifiermap(modifier_keymap);
-
-    keySyms->minKeyCode = min_keycode;
-    keySyms->maxKeyCode = max_keycode;
-    keySyms->mapWidth = mapWidth;
-    keySyms->map = keymap;
-
-    xkb = XkbGetKeyboard(pPriv->display, XkbGBN_AllComponentsMask, XkbUseCoreKbd);
-    if (xkb == NULL || xkb->geom == NULL) {
-        xf86DrvMsg(pPriv->scrnIndex, X_ERROR, "Couldn't get XKB keyboard.\n");
-        free(keymap);
-        return FALSE;
-    }
-
-    if(XkbGetControls(pPriv->display, XkbAllControlsMask, xkb) != Success) {
-        xf86DrvMsg(pPriv->scrnIndex, X_ERROR, "Couldn't get XKB keyboard controls.\n");
-        free(keymap);
-        return FALSE;
-    }
-
-    memcpy(ctrls, xkb->ctrls, sizeof(XkbControlsRec));
-    XkbFreeKeyboard(xkb, 0, False);
-    return TRUE;
 }
