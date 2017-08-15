@@ -1,4 +1,5 @@
 #  Copyright 2005 Adam Jackson.
+#            2017 Laércio de Sousa <laerciosousa@sme-mogidascruzes.sp.gov.br>
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a
 #  copy of this software and associated documentation files (the "Software"),
@@ -22,7 +23,7 @@
 
 # Initialize Autoconf
 AC_PREREQ([2.60])
-AC_INIT([xf86-video-nestedy],
+AC_INIT([xf86-video-nested],
         [0.1.0],
         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
         [xf86-video-nested])
@@ -49,6 +50,13 @@ AC_ARG_WITH(xorg-module-dir, [  --with-xorg-module-dir=DIR ],
                              [ moduledir="$libdir/xorg/modules" ])
 AC_SUBST(moduledir)
 
+# Define a configure option for choosing the client backend when building driver
+AC_ARG_WITH([backend],
+            AS_HELP_STRING([--with-backend=NAME],
+                           [Backend to be used when building the driver. Available options: xlib, xcb (default: xlib)]),
+            [BACKEND="$withval"],
+            [BACKEND=xlib])
+AC_SUBST([BACKEND])
 
 # Store the list of server defined optional extensions in REQUIRED_MODULES
 #XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
@@ -58,7 +66,12 @@ PKG_CHECK_MODULES(XORG, xorg-server xproto $REQUIRED_MODULES)
 
 # Checks for libraries.
 PKG_CHECK_MODULES(X11, x11)
-PKG_CHECK_MODULES(XEXT, xext)
+
+case "$BACKEND" in
+    xlib)
+        PKG_CHECK_MODULES(XEXT, xext)
+    ;;
+esac
 
 DRIVER_NAME=nested
 AC_SUBST([DRIVER_NAME])
@@ -68,3 +81,9 @@ AC_CONFIG_FILES([
                 src/Makefile
 ])
 AC_OUTPUT
+AC_MSG_RESULT([
+        $PACKAGE_NAME	        $VERSION
+
+        moduledir:		${moduledir}
+        backend:		${BACKEND}
+])
