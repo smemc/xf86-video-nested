@@ -92,7 +92,9 @@ void NestedPrintMode(ScrnInfoPtr p, DisplayModePtr m);
 typedef enum {
     OPTION_DISPLAY,
     OPTION_XAUTHORITY,
-    OPTION_ORIGIN
+    OPTION_ORIGIN,
+    OPTION_FULLSCREEN,
+    OPTION_OUTPUT
 } NestedOpts;
 
 typedef enum {
@@ -108,10 +110,12 @@ static SymTabRec NestedChipsets[] = {
  * port NestedClient to something that's not Xlib/Xcb we might need to add some
  * custom options */
 static OptionInfoRec NestedOptions[] = {
-    { OPTION_DISPLAY,    "Display",    OPTV_STRING, {0}, FALSE },
-    { OPTION_XAUTHORITY, "Xauthority", OPTV_STRING, {0}, FALSE },
-    { OPTION_ORIGIN,     "Origin",     OPTV_STRING, {0}, FALSE },
-    { -1,                NULL,         OPTV_NONE,   {0}, FALSE }
+    { OPTION_DISPLAY,    "Display",    OPTV_STRING,  {0}, FALSE },
+    { OPTION_XAUTHORITY, "Xauthority", OPTV_STRING,  {0}, FALSE },
+    { OPTION_ORIGIN,     "Origin",     OPTV_STRING,  {0}, FALSE },
+    { OPTION_FULLSCREEN, "Fullscreen", OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_OUTPUT,     "Output",     OPTV_STRING,  {0}, FALSE },
+    { -1,                NULL,         OPTV_NONE,    {0}, FALSE }
 };
 
 _X_EXPORT DriverRec NESTED = {
@@ -150,8 +154,8 @@ _X_EXPORT XF86ModuleData nestedModuleData = {
 
 /* These stuff should be valid to all server generations */
 typedef struct NestedPrivate {
-    int                          originX;
-    int                          originY;
+    Bool                         fullscreen;
+    Output                       output;
     NestedClientPrivatePtr       clientData;
     CreateScreenResourcesProcPtr CreateScreenResources;
     CloseScreenProcPtr           CloseScreen;
@@ -303,6 +307,12 @@ static Bool NestedPreInit(ScrnInfoPtr pScrn, int flags) {
     }
 
     pNested = PNESTED(pScrn);
+    pNested->output.name = NULL;
+    pNested->output.x = 0;
+    pNested->output.y = 0;
+    pNested->output.width = 0;
+    pNested->output.height = 0;
+    pNested->fullscreen = FALSE;
 
     if (!xf86SetDepthBpp(pScrn, 0, 0, 0, Support24bppFb | Support32bppFb))
         return FALSE;
@@ -339,23 +349,31 @@ static Bool NestedPreInit(ScrnInfoPtr pScrn, int flags) {
     if (xf86IsOptionSet(NestedOptions, OPTION_ORIGIN)) {
         originString = xf86GetOptValString(NestedOptions, OPTION_ORIGIN);
         if (sscanf(originString, "%d %d",
-                   &pNested->originX,
-                   &pNested->originY) != 2) {
+                   &pNested->output.x,
+                   &pNested->output.y) != 2) {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                        "Invalid value for option \"Origin\"\n");
             return FALSE;
         }
 
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Using origin x:%d y:%d\n",
-                   pNested->originX, pNested->originY);
-    } else {
-        pNested->originX = 0;
-        pNested->originY = 0;
+                   pNested->output.x, pNested->output.y);
+    }
+
+    if (xf86GetOptValBool(NestedOptions, OPTION_FULLSCREEN, &pNested->fullscreen))
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Fullscreen mode %s\n",
+                   pNested->fullscreen ? "enabled" : "disabled");
+
+    if (xf86IsOptionSet(NestedOptions, OPTION_OUTPUT)) {
+        pNested->output.name = xf86GetOptValString(NestedOptions,
+                                                   OPTION_OUTPUT);
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Targeting host X server output \"%s\"\n",
+                   pNested->output.name);
     }
 
     xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
 
-    if (!NestedClientCheckDisplay()) {
+    if (!NestedClientCheckDisplay(pScrn->scrnIndex, &pNested->output)) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Can't open display: %s\n",
                    displayName);
         return FALSE;
@@ -405,6 +423,7 @@ NestedValidateModes(ScrnInfoPtr pScrn) {
     DisplayModePtr mode;
     int i, width, height, ret = 0;
     int maxX = 0, maxY = 0;
+    NestedPrivatePtr pNested = PNESTED(pScrn);
 
     /* Print useless stuff */
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Monitor wants these modes:\n");
@@ -414,24 +433,45 @@ NestedValidateModes(ScrnInfoPtr pScrn) {
     }
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Too bad for it...\n");
 
-    /* If user requested modes, add them. If not, use 640x480 */
-    if (pScrn->display->modes != NULL) {
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "User wants these modes:\n");
-        for(i = 0; pScrn->display->modes[i] != NULL; i++) {
-            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "  %s\n",
-                       pScrn->display->modes[i]);
-            if (sscanf(pScrn->display->modes[i], "%dx%d", &width,
-                       &height) != 2) {
-                xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                           "This is not the mode name I was expecting...\n");
-                return 0;
+    if (pNested->output.name != NULL || pNested->fullscreen) {
+        if (!NestedAddMode(pScrn, pNested->output.width, pNested->output.height)) {
+            return 0;
+        }
+    } else {
+        /* Print useless stuff */
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Monitor wants these modes:\n");
+
+        for(mode = pScrn->monitor->Modes; mode != NULL; mode = mode->next) {
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "  %s (%dx%d)\n", mode->name,
+                       mode->HDisplay, mode->VDisplay);
+        }
+
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Too bad for it...\n");
+
+        /* If user requested modes, add them. If not, use 640x480 */
+        if (pScrn->display->modes != NULL && pScrn->display->modes[0] != NULL) {
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "User wants these modes:\n");
+
+            for(i = 0; pScrn->display->modes[i] != NULL; i++) {
+                xf86DrvMsg(pScrn->scrnIndex, X_INFO, "  %s\n",
+                           pScrn->display->modes[i]);
+
+                if (sscanf(pScrn->display->modes[i], "%dx%d", &width,
+                           &height) != 2) {
+                    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                               "This is not the mode name I was expecting...\n");
+                    return 0;
+                }
+
+                if (!NestedAddMode(pScrn, width, height)) {
+                    return 0;
+                }
             }
+
             if (!NestedAddMode(pScrn, width, height)) {
                 return 0;
             }
-        }
-    } else {
-        if (!NestedAddMode(pScrn, 640, 480)) {
+        } else if (!NestedAddMode(pScrn, 640, 480)) {
             return 0;
         }
     }
@@ -557,10 +597,11 @@ static Bool NestedScreenInit(SCREEN_INIT_ARGS_DECL)
     //Load_Nested_Mouse();
 
     pNested->clientData = NestedClientCreateScreen(pScrn->scrnIndex,
+                                                   pNested->output.name != NULL || pNested->fullscreen,
                                                    pScrn->virtualX,
                                                    pScrn->virtualY,
-                                                   pNested->originX,
-                                                   pNested->originY,
+                                                   pNested->output.x,
+                                                   pNested->output.y,
                                                    pScrn->depth,
                                                    pScrn->bitsPerPixel,
                                                    &redMask, &greenMask, &blueMask);
