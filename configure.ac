@@ -53,9 +53,9 @@ AC_SUBST(moduledir)
 # Define a configure option for choosing the client backend when building driver
 AC_ARG_WITH([backend],
             AS_HELP_STRING([--with-backend=NAME],
-                           [Backend to be used when building the driver. Available options: xlib, xcb (default: xlib)]),
+                           [Backend to be used when building the driver. Available options: xlib, xcb (default: xcb)]),
             [BACKEND="$withval"],
-            [BACKEND=xlib])
+            [BACKEND=xcb])
 AC_SUBST([BACKEND])
 
 # Store the list of server defined optional extensions in REQUIRED_MODULES
@@ -70,6 +70,9 @@ PKG_CHECK_MODULES(X11, x11)
 case "$BACKEND" in
     xlib)
         PKG_CHECK_MODULES(XEXT, xext)
+    ;;
+    xcb)
+        PKG_CHECK_MODULES(XCB, xcb xcb-aux xcb-icccm xcb-image xcb-shm xcb-randr)
     ;;
 esac
 
