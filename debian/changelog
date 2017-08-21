@@ -1,0 +1,7 @@
+xserver-xorg-video-nested (0.1.0-0~1.gbp1e459d) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @1e459de8ac6a87da9f08d6b38c7b52e5b76c0adf **
+
+  * Initial release.
+
+ -- Laércio de Sousa <laerciosousa@sme-mogidascruzes.sp.gov.br>  Mon, 21 Aug 2017 11:27:04 -0300
