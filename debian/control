@@ -1,0 +1,35 @@
+Source: xserver-xorg-video-nested-hwe-16.04
+Section: x11
+Priority: optional
+Maintainer: Laércio de Sousa <laerciosousa@sme-mogidascruzes.sp.gov.br>
+Build-Depends:
+ debhelper (>= 9),
+ dh-autoreconf,
+ pkg-config,
+ xserver-xorg-dev-hwe-16.04 (>= 2:1.18.99.901),
+ xutils-dev,
+ libx11-xcb-dev,
+ libxcb1-dev,
+ libxcb-util0-dev,
+ libxcb-image0-dev,
+ libxcb-icccm4-dev,
+ libxcb-shm0-dev,
+ libxcb-randr0-dev
+Standards-Version: 3.9.4
+Vcs-Git: git://gitlab.com/laerciosousa/xf86-video-nested
+Vcs-Browser: https://gitlab.com/laerciosousa/xf86-video-nested
+
+Package: xserver-xorg-video-nested-hwe-16.04
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ ${xviddriver:Depends},
+Provides:
+ ${xviddriver:Provides}
+Description: X.Org X server -- nested display driver
+ This package provides a nested display driver, which allows Xorg
+ to run on top of another X server, just like Xephyr.
+ .
+ More information about X.Org can be found at:
+ <URL:http://www.X.org>
