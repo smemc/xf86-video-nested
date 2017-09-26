@@ -26,7 +26,12 @@ Depends:
  ${misc:Depends},
  ${xviddriver:Depends},
 Provides:
+ xserver-xorg-video-nested, xorg-renamed-package, xorg-renamed-package-hwe-16.04,
  ${xviddriver:Provides}
+Replaces:
+ xserver-xorg-video-nested
+Conflicts:
+ xserver-xorg-video-nested
 Description: X.Org X server -- nested display driver
  This package provides a nested display driver, which allows Xorg
  to run on top of another X server, just like Xephyr.
