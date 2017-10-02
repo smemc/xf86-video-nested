@@ -28,6 +28,7 @@
 #endif
 
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <sys/shm.h>
 
@@ -46,6 +47,8 @@
 #include "client.h"
 
 #define BUF_LEN 256
+#define MAX_CONNECTION_TRIES 10
+#define WAIT_BEFORE_RETRY_CONNECTION_MSEC 100
 
 extern char *display;
 
@@ -121,6 +124,30 @@ XCBClientConnectionHasError(int scrnIndex,
     default:
         return FALSE;
     }
+}
+
+static xcb_connection_t *
+XCBClientConnectOrRetry(int scrnIndex, int *n) {
+    xcb_connection_t *connection;
+
+    for (int i = 0; i < MAX_CONNECTION_TRIES; i++) {
+        connection = xcb_connect(NULL, n);
+
+        if (!XCBClientConnectionHasError(scrnIndex, connection)) {
+            return connection;
+        } else {
+            xf86DrvMsg(scrnIndex,
+                       X_ERROR,
+                       "Failed to connect to host X server after try %d of %d. Retrying...\n",
+                       i + 1, MAX_CONNECTION_TRIES);
+            usleep(WAIT_BEFORE_RETRY_CONNECTION_MSEC);
+        }
+    }
+
+    xf86DrvMsg(scrnIndex,
+               X_ERROR,
+               "Failed to connect to host X server after %d tries. Giving up!\n",
+               MAX_CONNECTION_TRIES);
 }
 
 static inline Bool
@@ -475,7 +502,7 @@ XCBClientConnectToServer(NestedClientPrivatePtr pPriv) {
 
     pPriv->attrs[0] = XCB_EVENT_MASK_EXPOSURE;
     pPriv->attr_mask = XCB_CW_EVENT_MASK;
-    pPriv->conn = xcb_connect(NULL, &pPriv->screenNumber);
+    pPriv->conn = XCBClientConnectOrRetry(pPriv->scrnIndex, &pPriv->screenNumber);
 
     if (XCBClientConnectionHasError(pPriv->scrnIndex, pPriv->conn))
         return FALSE;
@@ -719,7 +746,7 @@ XCBClientPoll(NestedClientPrivatePtr pPriv) {
 Bool
 NestedClientCheckDisplay(int scrnIndex, OutputPtr output) {
     int n;
-    xcb_connection_t *conn = xcb_connect(NULL, &n);
+    xcb_connection_t *conn = XCBClientConnectOrRetry(scrnIndex, &n);
 
     if (XCBClientConnectionHasError(scrnIndex, conn))
         return FALSE;
